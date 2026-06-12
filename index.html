@@ -133,21 +133,31 @@ const VIDEOS={
   abs:{i:"🔥",n:"10-Min Standing Abs Workout",d:"fitbymik · One dumbbell",l:"https://youtu.be/KVt_uBX-XQw"},
 };
 const wo=(v,k)=>({...VIDEOS[v],wt:k});
-// 7-day rotating split. Phase adjusts intensity not type.
-// split: 1=arms, 2=highcardio, 3=legs, 4=rest, 5=arms+abs, 6=lowcardio, 7=rest
-function getSplit(cycDay){return((cycDay-1)%7)+1}
+
+// ═══════════════════════════════════════════════════════════
+// WORKOUT LOGIC (Crash-proofed)
+// ═══════════════════════════════════════════════════════════
+function getSplit(cycDay){
+  const split = ((cycDay-1)%7)+1;
+  return split > 0 ? split : 1; // Fallback if negative
+}
+
 function getWorkoutForDay(cycDay,phase){
   const split=getSplit(cycDay);
   const is2kg=["follicular","ovulation","lutealEarly"].includes(phase);
   const kg=is2kg?"2kg":"1kg";
+  
   if(split===1)return{type:"workout",focus:"Arms",ws:[wo("arms",kg)],tip:"Slow your reps — 3 counts down, 1 up. Makes "+kg+" feel twice as hard."};
   if(split===2)return{type:"workout",focus:"Cardio",ws:[wo("walk3",null)],tip:phase==="ovulation"?"Peak energy day — push your pace the full 45 mins!":"Steady pace, consistent effort. Full 3 miles today."};
   if(split===3)return{type:"legs",focus:"Legs"};
   if(split===4)return{type:"rest",note:"Rest day. Recovery is where your muscles actually grow. This is productive."};
   if(split===5)return{type:"workout",focus:"Arms + Abs",ws:[wo("arms",kg),wo("abs",kg)],tip:"Arms then abs back to back. Add 5 pulse reps at the end of each move."};
   if(split===6)return{type:"workout",focus:"Cardio",ws:[wo("walk1",null)],tip:"Gentle cardio day. 1 mile, easy pace, focus on breathing."};
-  if(split===7)return{type:"rest",note:"Rest day. Two rest days per week keeps you sustainable for months, not just weeks."};
+  
+  // Default fallback prevents fatal 'undefined' crash
+  return{type:"rest",note:"Rest day. Two rest days per week keeps you sustainable for months, not just weeks."};
 }
+
 const LEG_MOVES=[
   {name:"Standing Side Leg Raises",desc:"Stand tall, hold wall or chair for balance. Lift one leg straight out to the side, keeping toes forward. No higher than hip height. Slow and controlled.",sets:"3 sets × 15 reps each side · rest 30 sec"},
   {name:"Standing Rear Kickbacks",desc:"Hold support, tilt slightly forward. Kick one leg straight back — small range, squeeze glute at top. Do NOT swing or arch back.",sets:"3 sets × 15 reps each side · rest 30 sec"},
@@ -161,10 +171,20 @@ const MILESTONES=[7,14,21,30,60,90];
 const MILESTONE_MSG={7:"One full week of showing up. That is not nothing — that is everything.",14:"Two weeks. Your body is already changing. Keep going.",21:"21 days. Science says this is where habits form. You built one.",30:"30 days. One full cycle of consistency. You are different now.",60:"60 days. Two months of showing up for yourself. Incredible.",90:"90 days. This is not a routine anymore. This is who you are."};
 
 // ═══════════════════════════════════════════════════════════
-// STORAGE
+// STORAGE (Crash-proofed)
 // ═══════════════════════════════════════════════════════════
 const K={CS:"wt3_cs",DN:"wt3_dn",SK:"wt3_sk",MD:"wt3_md",EN:"wt3_en",MS:"wt3_ms",IT:"wt3_it",MG:"wt3_mg",HI:"wt3_hi",PD:"wt3_pd",SEEN_MS:"wt3_seen_ms"};
-function ls(k,fb=null){try{const v=localStorage.getItem(k);return v!==null?JSON.parse(v):fb}catch{return fb}}
+
+function ls(k, fb=null) {
+  try {
+    const v = localStorage.getItem(k);
+    if (v === null) return fb;
+    const parsed = JSON.parse(v);
+    return parsed !== null ? parsed : fb;
+  } catch {
+    return fb;
+  }
+}
 function lss(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
 
 // ═══════════════════════════════════════════════════════════
@@ -173,7 +193,7 @@ function lss(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
 function today(){const d=new Date();return new Date(d.getFullYear(),d.getMonth(),d.getDate())}
 function pd(s){const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)}
 function d2s(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
-function df(a,b){return Math.round((b-a)/86400000)} // <--- FIXED: Math.round() prevents DST math bugs
+function df(a,b){return Math.round((b-a)/86400000)}
 function fdate(d){return`${DOW[d.getDay()]}, ${d.getDate()} ${MON[d.getMonth()]} ${d.getFullYear()}`}
 function fshort(d){return`${d.getDate()} ${MON[d.getMonth()].slice(0,3)}`}
 function getHour(){return new Date().getHours()}
@@ -185,33 +205,33 @@ function greeting(){const h=getHour();if(h<12)return"Good morning";if(h<17)retur
 function gp(d){if(d<=3)return"menstrual";if(d<=12)return"follicular";if(d<=15)return"ovulation";if(d<=21)return"lutealEarly";return"lutealLate"}
 
 // ═══════════════════════════════════════════════════════════
-// STATE
+// STATE (Crash-proofed Type Enforcement)
 // ═══════════════════════════════════════════════════════════
 let S={
   cs:ls(K.CS,null),
-  dn:new Set(ls(K.DN,[])),
-  partial:new Set(ls(K.PD,[])),
-  sk:ls(K.SK,{c:0,l:0}),
-  mood:ls(K.MD,{}),
-  energy:ls(K.EN,{}),
-  measurements:ls(K.MS,[]),
-  intentions:ls(K.IT,{}),
-  monthGoal:ls(K.MG,{goal:20,set:false}),
-  history:ls(K.HI,[]),
-  seenMilestones:new Set(ls(K.SEEN_MS,[])),
+  dn:new Set(Array.isArray(ls(K.DN)) ? ls(K.DN) : []),
+  partial:new Set(Array.isArray(ls(K.PD)) ? ls(K.PD) : []),
+  sk:ls(K.SK,{c:0,l:0}) || {c:0,l:0},
+  mood:ls(K.MD,{}) || {},
+  energy:ls(K.EN,{}) || {},
+  measurements:Array.isArray(ls(K.MS)) ? ls(K.MS) : [],
+  intentions:ls(K.IT,{}) || {},
+  monthGoal:ls(K.MG,{goal:20,set:false}) || {goal:20,set:false},
+  history:Array.isArray(ls(K.HI)) ? ls(K.HI) : [],
+  seenMilestones:new Set(Array.isArray(ls(K.SEEN_MS)) ? ls(K.SEEN_MS) : []),
   activeTab:"today",
   selectedDate:null,
   pendingMilestone:null,
 };
 
 // ═══════════════════════════════════════════════════════════
-// CYCLE HELPERS
+// CYCLE HELPERS (Crash-proofed future dates)
 // ═══════════════════════════════════════════════════════════
 function cycleDay(date){
-  if(!S.cs)return null;
+  if(!S.cs)return 1;
   const diff=df(pd(S.cs),date)+1;
-  if(diff<1)return null;
-  // Auto-wrap at 30
+  // If date is in the future relative to cycle start, default to Day 1 instead of crashing
+  if(diff<1)return 1; 
   return((diff-1)%30)+1;
 }
 function calDate(cd){return new Date(pd(S.cs).getTime()+(cd-1)*86400000)}
@@ -262,7 +282,7 @@ function monthStats(){
 }
 
 // ═══════════════════════════════════════════════════════════
-// OVERLOAD CHECK (every 4 weeks suggest progression)
+// OVERLOAD CHECK 
 // ═══════════════════════════════════════════════════════════
 function showOverload(){
   if(!S.cs)return false;
@@ -324,7 +344,7 @@ function renderToday(){
   const isPartial=S.partial.has(ts);
   const todayMood=S.mood[ts];
   const todayEnergy=S.energy[ts];
-  const affIdx=cd%AFFIRMATIONS[phase].length;
+  const affIdx=(cd||1)%AFFIRMATIONS[phase].length;
   const aff=AFFIRMATIONS[phase][affIdx];
 
   let h=``;
@@ -380,7 +400,6 @@ function renderToday(){
     h+=`<div class="card"><div class="lbl">Today's Workout${workout.ws.length>1?"s":""}</div>
       ${workout.ws.map(w=>{
         const b=w.wt?`<span class="wb ${w.wt==="1kg"?"w1":"w2"}">${w.wt}</span>`:"";
-        // <--- FIXED: Changed ${w.name} to ${w.n} here so the title displays properly!
         return`<div class="wr"><div class="wi">${w.i}</div><div style="flex:1"><div style="font-weight:600;font-size:.88rem;margin-bottom:2px">${w.n}${b}</div><div style="font-size:.74rem;color:var(--muted);margin-bottom:6px">${w.d}</div><a class="wl" href="${w.l}" target="_blank" style="background:${p.c}">▶ Open on YouTube</a></div></div>`;
       }).join("")}
       <div class="tip-box" style="background:${p.lt};border:1px solid ${p.c}33"><strong style="color:${p.c}">💡 Tip: </strong>${workout.tip}</div>
@@ -598,7 +617,6 @@ function renderProgress(){
       const labels=S.measurements.filter(m=>m.weight).map(m=>m.date);
       if(data.length<2)return;
       
-      // <--- FIXED: Ensure width is calculated properly to prevent crash
       const parentWidth = canvas.parentElement.offsetWidth;
       if (parentWidth === 0) return; // Tab is hidden, skip drawing
       canvas.width = parentWidth - 32;
